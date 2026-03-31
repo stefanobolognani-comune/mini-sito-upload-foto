@@ -67,7 +67,8 @@ export default function App() {
       <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[420px_1fr]">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Mini sito raccolta dati</h1>
+            <h1 className="text-2xl font-bold text-slate-900">ASSESSORATO URBANISTICA</h1>
+            <h1 className="text-2xl font-bold text-slate-900">RAFFAELE DIEGO STEFANO</h1>
             <p className="mt-2 text-sm text-slate-600">
               Compila i campi, carica una foto e aggiungi la scheda alla lista.
             </p>
