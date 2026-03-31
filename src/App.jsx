@@ -81,7 +81,7 @@ export default function App() {
                 type="text"
                 value={titolo}
                 onChange={(e) => setTitolo(e.target.value)}
-                placeholder="Es. Difetto gomma anteriore"
+                placeholder="Inserisci la via che stai valutando"
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
               />
             </div>
