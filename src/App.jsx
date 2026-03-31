@@ -1,20 +1,24 @@
 import { useMemo, useState } from "react";
 
 export default function App() {
-  const [categoria, setCategoria] = useState("");
-  const [priorita, setPriorita] = useState("");
-  const [stato, setStato] = useState("");
+  const [visibilita, setVisibilita] = useState("");
+  const [traffico, setTraffico] = useState("");
+  const [lunghezza, setLunghezza] = useState("");
+  const [larghezza, setLarghezza] = useState("");
+  const [grade, setGrade] = useState("");
   const [titolo, setTitolo] = useState("");
   const [foto, setFoto] = useState(null);
   const [items, setItems] = useState([]);
 
-  const categorie = ["Prodotto", "Macchina", "Segnalazione", "Altro"];
-  const prioritaList = ["Bassa", "Media", "Alta", "Urgente"];
-  const stati = ["Nuovo", "In verifica", "Approvato", "Chiuso"];
+  const visibilitaList = ["ALTA", "MEDIA", "BASSA"];
+  const trafficoList = ["ALTO", "MEDIO", "BASSO"];
+  const lunghezzaList = ["CORTA", "MEDIA", "LUNGA"];
+  const larghezzaList = ["STRETTA", "MEDIA", "LARGA"];
+  const gradeList = ["Nuova", "Buona", "Discreta", "Scadente", "Pessima", "Critica"];
 
   const canAdd = useMemo(() => {
-    return titolo.trim() && categoria && priorita && stato;
-  }, [titolo, categoria, priorita, stato]);
+    return titolo.trim() && visibilita && traffico && lunghezza && larghezza && grade;
+  }, [titolo, visibilita, traffico, lunghezza, larghezza, grade]);
 
   function handlePhotoChange(event) {
     const file = event.target.files?.[0];
@@ -40,18 +44,22 @@ export default function App() {
     const newItem = {
       id: crypto.randomUUID(),
       titolo: titolo.trim(),
-      categoria,
-      priorita,
-      stato,
+      visibilita,
+      traffico,
+      lunghezza,
+      larghezza,
+      grade,
       foto,
       createdAt: new Date().toLocaleString("it-IT"),
     };
 
     setItems((prev) => [newItem, ...prev]);
     setTitolo("");
-    setCategoria("");
-    setPriorita("");
-    setStato("");
+    setVisibilita("");
+    setTraffico("");
+    setLunghezza("");
+    setLarghezza("");
+    setGrade("");
     setFoto(null);
 
     const fileInput = document.getElementById("foto-upload");
@@ -87,43 +95,81 @@ export default function App() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Menu 1: Categoria</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Visibilità</label>
               <select
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
+                value={visibilita}
+                onChange={(e) => setVisibilita(e.target.value)}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
               >
-                <option value="">Seleziona categoria</option>
-                {categorie.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                <option value="">Seleziona visibilità</option>
+                {visibilitaList.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Menu 2: Priorità</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Traffico</label>
               <select
-                value={priorita}
-                onChange={(e) => setPriorita(e.target.value)}
+                value={traffico}
+                onChange={(e) => setTraffico(e.target.value)}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
               >
-                <option value="">Seleziona priorità</option>
-                {prioritaList.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                <option value="">Seleziona traffico</option>
+                {trafficoList.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Menu 3: Stato</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Lunghezza</label>
               <select
-                value={stato}
-                onChange={(e) => setStato(e.target.value)}
+                value={lunghezza}
+                onChange={(e) => setLunghezza(e.target.value)}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
               >
-                <option value="">Seleziona stato</option>
-                {stati.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                <option value="">Seleziona lunghezza</option>
+                {lunghezzaList.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Larghezza</label>
+              <select
+                value={larghezza}
+                onChange={(e) => setLarghezza(e.target.value)}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
+              >
+                <option value="">Seleziona larghezza</option>
+                {larghezzaList.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Grade</label>
+              <select
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
+              >
+                <option value="">Seleziona grade</option>
+                {gradeList.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
@@ -190,9 +236,21 @@ export default function App() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 text-sm">
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">{item.categoria}</span>
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">{item.priorita}</span>
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">{item.stato}</span>
+                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                        Visibilità: {item.visibilita}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                        Traffico: {item.traffico}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                        Lunghezza: {item.lunghezza}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                        Larghezza: {item.larghezza}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                        Grade: {item.grade}
+                      </span>
                     </div>
 
                     <button
