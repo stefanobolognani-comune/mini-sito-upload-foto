@@ -297,10 +297,10 @@ export default function App() {
       
       {/* Altri mini-badge */}
       <div className="flex flex-wrap gap-1 text-[10px] text-slate-500">
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Vis: {item.visibilita}</span>
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Traf: {item.traffico}</span>
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Lung: {item.lunghezza}</span>
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Larg: {item.larghezza}</span>
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Visibilità: {item.visibilita}</span>
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Traffico: {item.traffico}</span>
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Lunghezza: {item.lunghezza}</span>
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Larghezza: {item.larghezza}</span>
       </div>
     </div>
 
