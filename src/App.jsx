@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 export default function App() {
   const [zona, setZona] = useState("");
   const [via, setVia] = useState("");
+  const [tratto, setTratto] = useState("");
 
   const [visibilita, setVisibilita] = useState("");
   const [traffico, setTraffico] = useState("");
@@ -42,8 +43,17 @@ export default function App() {
       .sort((a, b) => a.localeCompare(b, "it"));
   }, [zoneVie, zona]);
 
+const trattiFiltrati = useMemo(() => {
+  if (!zona || !via) return [];
+
+  return zoneVie
+    .filter((item) => item.zona === zona && item.via === via)
+    .map((item) => item.tratto)
+    .sort((a, b) => a.localeCompare(b, "it"));
+}, [zoneVie, zona, via]);
+
   const canAdd = useMemo(() => {
-    return zona && via && visibilita && traffico && lunghezza && larghezza && grade && !loading;
+    return zona && via && tratto && visibilita && traffico && lunghezza && larghezza && grade && !loading;
   }, [zona, via, visibilita, traffico, lunghezza, larghezza, grade, loading]);
 
 const top3Ids = useMemo(() => {
@@ -83,7 +93,7 @@ const top3Ids = useMemo(() => {
 
     const { data, error } = await supabase
       .from("zone_vie")
-      .select("zona, via")
+      .select("zona, via, tratto")
       .order("zona", { ascending: true })
       .order("via", { ascending: true });
 
@@ -102,6 +112,7 @@ const top3Ids = useMemo(() => {
     const selectedZona = event.target.value;
     setZona(selectedZona);
     setVia("");
+	setTratto("");
   }
 
   function handlePhotoChange(event) {
@@ -257,7 +268,8 @@ const top3Ids = useMemo(() => {
       const ratingTotale = calculateRating(scores);
 
       const payload = {
-        titolo: via,
+        tratto,
+titolo: `${via} - ${tratto}`,
         zona,
         via,
         visibilita,
@@ -345,7 +357,10 @@ const top3Ids = useMemo(() => {
               <label className="mb-1 block text-sm font-medium text-slate-700">Via</label>
               <select
                 value={via}
-                onChange={(e) => setVia(e.target.value)}
+                onChange={(e) => {
+  setVia(e.target.value);
+  setTratto("");
+}}
                 disabled={!zona || loadingZoneVie}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
               >
@@ -359,7 +374,25 @@ const top3Ids = useMemo(() => {
                 ))}
               </select>
             </div>
-
+			
+<div>
+  <label className="mb-1 block text-sm font-medium text-slate-700">Tratto</label>
+  <select
+    value={tratto}
+    onChange={(e) => setTratto(e.target.value)}
+    disabled={!via}
+    className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
+  >
+    <option value="">
+      {!via ? "Prima seleziona una via" : "Seleziona tratto"}
+    </option>
+    {trattiFiltrati.map((item) => (
+      <option key={item} value={item}>
+        {item}
+      </option>
+    ))}
+  </select>
+</div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Visibilità</label>
               <select
@@ -534,6 +567,9 @@ const top3Ids = useMemo(() => {
                       <h3 className="text-lg font-semibold text-slate-900">
                         {item.via || item.titolo}
                       </h3>
+					  <p className="text-sm font-medium text-slate-700">
+  {item.tratto}
+</p>
                       <p className="mt-1 text-sm text-slate-600">{item.zona}</p>
                       <p className="mt-1 text-xs text-slate-500">
                         Creato il{" "}
