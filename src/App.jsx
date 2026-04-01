@@ -283,9 +283,17 @@ export default function App() {
     </div>
 
     {/* 2. RATING TOTALE (SPOSTATO QUI) con colore dinamico*/}
-    <div className="rounded-2xl bg-white border border-slate-200 px-4 py-3 shadow-sm">
-	<div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Rating totale</div>
-	<div className={`text-3xl font-black ${item.rating_totale > 4 ? "text-red-600" : "text-slate-900"}`}>
+    <div className={`rounded-2xl bg-white border px-4 py-3 shadow-sm ${
+  item.rating_totale < 2 ? "border-green-100" : 
+  item.rating_totale <= 3.9 ? "border-yellow-100" : "border-red-100"
+}`}>
+  <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+    Rating totale
+  </div>
+  <div className={`text-3xl font-black ${
+    item.rating_totale < 2 ? "text-green-600" : 
+    item.rating_totale <= 3.9 ? "text-yellow-600" : "text-red-600"
+  }`}>
     {item.rating_totale ?? "-"}
   </div>
 </div>
