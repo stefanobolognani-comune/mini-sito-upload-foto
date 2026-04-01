@@ -16,6 +16,7 @@ export default function App() {
 
   const [items, setItems] = useState([]);
   const [zoneVie, setZoneVie] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingZoneVie, setLoadingZoneVie] = useState(true);
@@ -59,6 +60,7 @@ export default function App() {
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error(error);
       setErrorMessage("Errore nel caricamento delle segnalazioni.");
       setLoadingList(false);
       return;
@@ -78,6 +80,7 @@ export default function App() {
       .order("via", { ascending: true });
 
     if (error) {
+      console.error(error);
       setErrorMessage("Errore nel caricamento di zone e vie.");
       setLoadingZoneVie(false);
       return;
@@ -154,6 +157,74 @@ export default function App() {
     }
   }
 
+  function getNumericScores({
+    visibilita: visibilitaValue,
+    traffico: trafficoValue,
+    lunghezza: lunghezzaValue,
+    larghezza: larghezzaValue,
+    grade: gradeValue,
+  }) {
+    const scoreVisibilitaMap = {
+      ALTA: 1,
+      MEDIA: 2,
+      BASSA: 3,
+    };
+
+    const scoreTrafficoMap = {
+      BASSO: 1,
+      MEDIO: 2,
+      ALTO: 3,
+    };
+
+    const scoreLunghezzaMap = {
+      CORTA: 1,
+      MEDIA: 2,
+      LUNGA: 3,
+    };
+
+    const scoreLarghezzaMap = {
+      LARGA: 1,
+      MEDIA: 2,
+      STRETTA: 3,
+    };
+
+    const scoreGradeMap = {
+      Nuova: 1,
+      Buona: 2,
+      Discreta: 3,
+      Scadente: 4,
+      Pessima: 5,
+      Critica: 6,
+    };
+
+    return {
+      score_visibilita: scoreVisibilitaMap[visibilitaValue] || 0,
+      score_traffico: scoreTrafficoMap[trafficoValue] || 0,
+      score_lunghezza: scoreLunghezzaMap[lunghezzaValue] || 0,
+      score_larghezza: scoreLarghezzaMap[larghezzaValue] || 0,
+      score_grade: scoreGradeMap[gradeValue] || 0,
+    };
+  }
+
+  function calculateRating(scores) {
+    const PESI = {
+      visibilita: 0.2,
+      traffico: 0.2,
+      lunghezza: 0.15,
+      larghezza: 0.15,
+      grade: 0.3,
+    };
+
+    const totale =
+      scores.score_visibilita * PESI.visibilita +
+      scores.score_traffico * PESI.traffico +
+      scores.score_lunghezza * PESI.lunghezza +
+      scores.score_larghezza * PESI.larghezza +
+      scores.score_grade * PESI.grade;
+
+    return Number(totale.toFixed(2));
+  }
+
   async function addItem() {
     if (!canAdd) return;
 
@@ -167,6 +238,16 @@ export default function App() {
         imageUrl = await uploadPhoto();
       }
 
+      const scores = getNumericScores({
+        visibilita,
+        traffico,
+        lunghezza,
+        larghezza,
+        grade,
+      });
+
+      const ratingTotale = calculateRating(scores);
+
       const payload = {
         titolo: via,
         zona,
@@ -177,6 +258,12 @@ export default function App() {
         larghezza,
         grade,
         image_url: imageUrl,
+        score_visibilita: scores.score_visibilita,
+        score_traffico: scores.score_traffico,
+        score_lunghezza: scores.score_lunghezza,
+        score_larghezza: scores.score_larghezza,
+        score_grade: scores.score_grade,
+        rating_totale: ratingTotale,
       };
 
       const { data, error } = await supabase
@@ -451,6 +538,15 @@ export default function App() {
                       >
                         {item.grade}
                       </span>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-100 px-4 py-3">
+                      <div className="text-xs uppercase tracking-wide text-slate-500">
+                        Rating totale
+                      </div>
+                      <div className="mt-1 text-2xl font-bold text-slate-900">
+                        {item.rating_totale ?? "-"}
+                      </div>
                     </div>
                   </div>
                 </article>
