@@ -135,6 +135,25 @@ export default function App() {
     return data.publicUrl;
   }
 
+  function getGradeStyle(gradeValue) {
+    switch (gradeValue) {
+      case "Nuova":
+        return "bg-blue-100 text-blue-800";
+      case "Buona":
+        return "bg-green-100 text-green-800";
+      case "Discreta":
+        return "bg-yellow-100 text-yellow-800";
+      case "Scadente":
+        return "bg-orange-100 text-orange-800";
+      case "Pessima":
+        return "bg-red-200 text-red-900";
+      case "Critica":
+        return "bg-red-600 text-white";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  }
+
   async function addItem() {
     if (!canAdd) return;
 
@@ -387,7 +406,11 @@ export default function App() {
               {items.map((item) => (
                 <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
                   {item.image_url ? (
-                    <img src={item.image_url} alt={item.via || item.titolo} className="h-48 w-full object-cover" />
+                    <img
+                      src={item.image_url}
+                      alt={item.via || item.titolo}
+                      className="h-48 w-full object-cover"
+                    />
                   ) : (
                     <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">
                       Nessuna foto salvata
@@ -396,10 +419,15 @@ export default function App() {
 
                   <div className="space-y-3 p-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900">{item.via || item.titolo}</h3>
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        {item.via || item.titolo}
+                      </h3>
                       <p className="mt-1 text-sm text-slate-600">{item.zona}</p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Creato il {item.created_at ? new Date(item.created_at).toLocaleString("it-IT") : "-"}
+                        Creato il{" "}
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleString("it-IT")
+                          : "-"}
                       </p>
                     </div>
 
@@ -416,8 +444,12 @@ export default function App() {
                       <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
                         Larghezza: {item.larghezza}
                       </span>
-                      <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
-                        Grade: {item.grade}
+                      <span
+                        className={`rounded-full px-3 py-1 text-sm font-medium ${getGradeStyle(
+                          item.grade
+                        )}`}
+                      >
+                        {item.grade}
                       </span>
                     </div>
                   </div>
