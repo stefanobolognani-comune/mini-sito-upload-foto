@@ -2,19 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 
 export default function App() {
+  const [zona, setZona] = useState("");
+  const [via, setVia] = useState("");
+
   const [visibilita, setVisibilita] = useState("");
   const [traffico, setTraffico] = useState("");
   const [lunghezza, setLunghezza] = useState("");
   const [larghezza, setLarghezza] = useState("");
   const [grade, setGrade] = useState("");
-  const [titolo, setTitolo] = useState("");
 
   const [fotoFile, setFotoFile] = useState(null);
   const [fotoPreview, setFotoPreview] = useState("");
 
   const [items, setItems] = useState([]);
+  const [zoneVie, setZoneVie] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
+  const [loadingZoneVie, setLoadingZoneVie] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
   const visibilitaList = ["ALTA", "MEDIA", "BASSA"];
@@ -23,12 +27,26 @@ export default function App() {
   const larghezzaList = ["STRETTA", "MEDIA", "LARGA"];
   const gradeList = ["Nuova", "Buona", "Discreta", "Scadente", "Pessima", "Critica"];
 
+  const zoneList = useMemo(() => {
+    const uniqueZones = [...new Set(zoneVie.map((item) => item.zona))];
+    return uniqueZones.sort((a, b) => a.localeCompare(b, "it"));
+  }, [zoneVie]);
+
+  const vieFiltrate = useMemo(() => {
+    if (!zona) return [];
+    return zoneVie
+      .filter((item) => item.zona === zona)
+      .map((item) => item.via)
+      .sort((a, b) => a.localeCompare(b, "it"));
+  }, [zoneVie, zona]);
+
   const canAdd = useMemo(() => {
-    return titolo.trim() && visibilita && traffico && lunghezza && larghezza && grade && !loading;
-  }, [titolo, visibilita, traffico, lunghezza, larghezza, grade, loading]);
+    return zona && via && visibilita && traffico && lunghezza && larghezza && grade && !loading;
+  }, [zona, via, visibilita, traffico, lunghezza, larghezza, grade, loading]);
 
   useEffect(() => {
     loadItems();
+    loadZoneVie();
   }, []);
 
   async function loadItems() {
@@ -41,13 +59,38 @@ export default function App() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      setErrorMessage("Errore nel caricamento dei dati.");
+      setErrorMessage("Errore nel caricamento delle segnalazioni.");
       setLoadingList(false);
       return;
     }
 
     setItems(data || []);
     setLoadingList(false);
+  }
+
+  async function loadZoneVie() {
+    setLoadingZoneVie(true);
+
+    const { data, error } = await supabase
+      .from("zone_vie")
+      .select("zona, via")
+      .order("zona", { ascending: true })
+      .order("via", { ascending: true });
+
+    if (error) {
+      setErrorMessage("Errore nel caricamento di zone e vie.");
+      setLoadingZoneVie(false);
+      return;
+    }
+
+    setZoneVie(data || []);
+    setLoadingZoneVie(false);
+  }
+
+  function handleZonaChange(event) {
+    const selectedZona = event.target.value;
+    setZona(selectedZona);
+    setVia("");
   }
 
   function handlePhotoChange(event) {
@@ -106,7 +149,9 @@ export default function App() {
       }
 
       const payload = {
-        titolo: titolo.trim(),
+        titolo: via,
+        zona,
+        via,
         visibilita,
         traffico,
         lunghezza,
@@ -129,7 +174,8 @@ export default function App() {
         setItems((prev) => [savedItem, ...prev]);
       }
 
-      setTitolo("");
+      setZona("");
+      setVia("");
       setVisibilita("");
       setTraffico("");
       setLunghezza("");
@@ -156,20 +202,47 @@ export default function App() {
             <h1 className="text-2xl font-bold text-slate-900">ASSESSORATO URBANISTICA</h1>
             <h1 className="text-2xl font-bold text-slate-900">RAFFAELE DIEGO STEFANO</h1>
             <p className="mt-2 text-sm text-slate-600">
-              Compila i campi, carica una foto e salva la scheda nel database.
+              Seleziona zona e via, compila i campi, carica una foto e salva la scheda.
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Titolo</label>
-              <input
-                type="text"
-                value={titolo}
-                onChange={(e) => setTitolo(e.target.value)}
-                placeholder="Inserisci la via che stai valutando"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500"
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Zona</label>
+              <select
+                value={zona}
+                onChange={handleZonaChange}
+                disabled={loadingZoneVie}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
+              >
+                <option value="">
+                  {loadingZoneVie ? "Caricamento zone..." : "Seleziona zona"}
+                </option>
+                {zoneList.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Via</label>
+              <select
+                value={via}
+                onChange={(e) => setVia(e.target.value)}
+                disabled={!zona || loadingZoneVie}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
+              >
+                <option value="">
+                  {!zona ? "Prima seleziona una zona" : "Seleziona via"}
+                </option>
+                {vieFiltrate.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -181,7 +254,9 @@ export default function App() {
               >
                 <option value="">Seleziona visibilità</option>
                 {visibilitaList.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
@@ -195,7 +270,9 @@ export default function App() {
               >
                 <option value="">Seleziona traffico</option>
                 {trafficoList.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
@@ -209,7 +286,9 @@ export default function App() {
               >
                 <option value="">Seleziona lunghezza</option>
                 {lunghezzaList.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
@@ -223,7 +302,9 @@ export default function App() {
               >
                 <option value="">Seleziona larghezza</option>
                 {larghezzaList.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
@@ -237,7 +318,9 @@ export default function App() {
               >
                 <option value="">Seleziona grade</option>
                 {gradeList.map((item) => (
-                  <option key={item} value={item}>{item}</option>
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
                 ))}
               </select>
             </div>
@@ -304,7 +387,7 @@ export default function App() {
               {items.map((item) => (
                 <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
                   {item.image_url ? (
-                    <img src={item.image_url} alt={item.titolo} className="h-48 w-full object-cover" />
+                    <img src={item.image_url} alt={item.via || item.titolo} className="h-48 w-full object-cover" />
                   ) : (
                     <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">
                       Nessuna foto salvata
@@ -313,9 +396,10 @@ export default function App() {
 
                   <div className="space-y-3 p-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900">{item.titolo}</h3>
+                      <h3 className="text-lg font-semibold text-slate-900">{item.via || item.titolo}</h3>
+                      <p className="mt-1 text-sm text-slate-600">{item.zona}</p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Creato il {new Date(item.created_at).toLocaleString("it-IT")}
+                        Creato il {item.created_at ? new Date(item.created_at).toLocaleString("it-IT") : "-"}
                       </p>
                     </div>
 
