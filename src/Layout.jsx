@@ -17,8 +17,9 @@ export default function Layout() {
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 md:px-10">
           <div>
-            <h1 className="text-lg font-bold text-slate-900">Assessorato Urbanistica</h1>
+            <h1 className="text-lg font-bold text-slate-900">URBANISTICA +</h1>
             <p className="text-sm text-slate-500">Gestione segnalazioni e report</p>
+             <p className="text-sm text-slate-500">Raffaele Diego Stefano</p>
           </div>
 
           <nav className="flex items-center gap-2">
