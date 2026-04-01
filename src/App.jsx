@@ -8,7 +8,10 @@ export default function App() {
   const [larghezza, setLarghezza] = useState("");
   const [grade, setGrade] = useState("");
   const [titolo, setTitolo] = useState("");
-  const [foto, setFoto] = useState(null);
+
+  const [fotoFile, setFotoFile] = useState(null);
+  const [fotoPreview, setFotoPreview] = useState("");
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
@@ -50,19 +53,43 @@ export default function App() {
   function handlePhotoChange(event) {
     const file = event.target.files?.[0];
     if (!file) {
-      setFoto(null);
+      setFotoFile(null);
+      setFotoPreview("");
       return;
     }
 
+    setFotoFile(file);
+
     const reader = new FileReader();
     reader.onload = () => {
-      setFoto({
-        name: file.name,
-        type: file.type,
-        preview: reader.result,
-      });
+      setFotoPreview(reader.result);
     };
     reader.readAsDataURL(file);
+  }
+
+  async function uploadPhoto() {
+    if (!fotoFile) return null;
+
+    const ext = fotoFile.name.split(".").pop()?.toLowerCase() || "jpg";
+    const fileName = `${crypto.randomUUID()}.${ext}`;
+    const filePath = `uploads/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("foto-segnalazioni")
+      .upload(filePath, fotoFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from("foto-segnalazioni")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
   }
 
   async function addItem() {
@@ -71,47 +98,54 @@ export default function App() {
     setLoading(true);
     setErrorMessage("");
 
-    const payload = {
-      titolo: titolo.trim(),
-      visibilita,
-      traffico,
-      lunghezza,
-      larghezza,
-      grade,
-    };
+    try {
+      let imageUrl = null;
 
-    const { data, error } = await supabase
-      .from("segnalazioni")
-      .insert([payload])
-      .select();
+      if (fotoFile) {
+        imageUrl = await uploadPhoto();
+      }
 
-    if (error) {
-      setErrorMessage("Errore nel salvataggio dei dati.");
+      const payload = {
+        titolo: titolo.trim(),
+        visibilita,
+        traffico,
+        lunghezza,
+        larghezza,
+        grade,
+        image_url: imageUrl,
+      };
+
+      const { data, error } = await supabase
+        .from("segnalazioni")
+        .insert([payload])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      const savedItem = data?.[0];
+      if (savedItem) {
+        setItems((prev) => [savedItem, ...prev]);
+      }
+
+      setTitolo("");
+      setVisibilita("");
+      setTraffico("");
+      setLunghezza("");
+      setLarghezza("");
+      setGrade("");
+      setFotoFile(null);
+      setFotoPreview("");
+
+      const fileInput = document.getElementById("foto-upload");
+      if (fileInput) fileInput.value = "";
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Errore nel salvataggio dei dati o della foto.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const savedItem = data?.[0];
-    if (savedItem) {
-      setItems((prev) => [savedItem, ...prev]);
-    }
-
-    setTitolo("");
-    setVisibilita("");
-    setTraffico("");
-    setLunghezza("");
-    setLarghezza("");
-    setGrade("");
-    setFoto(null);
-
-    const fileInput = document.getElementById("foto-upload");
-    if (fileInput) fileInput.value = "";
-
-    setLoading(false);
-  }
-
-  function removeItemFromView(id) {
-    setItems((prev) => prev.filter((item) => item.id !== id));
   }
 
   return (
@@ -122,7 +156,7 @@ export default function App() {
             <h1 className="text-2xl font-bold text-slate-900">ASSESSORATO URBANISTICA</h1>
             <h1 className="text-2xl font-bold text-slate-900">RAFFAELE DIEGO STEFANO</h1>
             <p className="mt-2 text-sm text-slate-600">
-              Compila i campi e salva la scheda nel database.
+              Compila i campi, carica una foto e salva la scheda nel database.
             </p>
           </div>
 
@@ -217,15 +251,14 @@ export default function App() {
                 onChange={handlePhotoChange}
                 className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700"
               />
-              <p className="mt-1 text-xs text-slate-500">
-                Per ora la foto è solo anteprima locale. Non viene ancora salvata su Supabase.
-              </p>
             </div>
 
-            {foto?.preview && (
+            {fotoPreview && (
               <div className="overflow-hidden rounded-2xl border border-slate-200">
-                <img src={foto.preview} alt="Anteprima upload" className="h-56 w-full object-cover" />
-                <div className="border-t border-slate-200 px-4 py-3 text-sm text-slate-600">{foto.name}</div>
+                <img src={fotoPreview} alt="Anteprima upload" className="h-56 w-full object-cover" />
+                <div className="border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+                  {fotoFile?.name}
+                </div>
               </div>
             )}
 
@@ -250,7 +283,7 @@ export default function App() {
             <div>
               <h2 className="text-xl font-bold text-slate-900">Lista inserimenti</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Dati letti dal database Supabase.
+                Dati e immagini letti da Supabase.
               </p>
             </div>
             <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
@@ -270,8 +303,8 @@ export default function App() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {items.map((item) => (
                 <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
-                  {foto?.preview ? (
-                    <img src={foto.preview} alt={item.titolo} className="h-48 w-full object-cover" />
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.titolo} className="h-48 w-full object-cover" />
                   ) : (
                     <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">
                       Nessuna foto salvata
@@ -303,13 +336,6 @@ export default function App() {
                         Grade: {item.grade}
                       </span>
                     </div>
-
-                    <button
-                      onClick={() => removeItemFromView(item.id)}
-                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                    >
-                      Rimuovi solo dalla vista
-                    </button>
                   </div>
                 </article>
               ))}
