@@ -513,7 +513,7 @@ const top3Ids = useMemo(() => {
   key={item.id}
   className={`overflow-hidden rounded-3xl border bg-slate-50 ${
     top3Ids.includes(item.id)
-      ? "border-red-500 ring-2 ring-red-300"
+      ? "border-red-700 ring-4 ring-red-500 shadow-lg shadow-red-300"
       : "border-slate-200"
   }`}
 >
