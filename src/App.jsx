@@ -292,7 +292,7 @@ export default function App() {
   </div>
   <div className={`text-3xl font-black ${
     item.rating_totale < 2 ? "text-green-600" : 
-    item.rating_totale <= 3.9 ? "text-yellow-600" : "text-red-600"
+    item.rating_totale <= 3.9 ? "text-yellow-500" : "text-red-600"
   }`}>
     {item.rating_totale ?? "-"}
   </div>
