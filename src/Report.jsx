@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 export default function Report() {
   const [zona, setZona] = useState("");
   const [via, setVia] = useState("");
+  const [tratto, setTratto] = useState("");
 
   const [items, setItems] = useState([]);
   const [zoneVie, setZoneVie] = useState([]);
@@ -42,13 +43,14 @@ export default function Report() {
 
     const { data, error } = await supabase
       .from("zone_vie")
-      .select("zona, via")
+      .select("zona, via, tratto")
       .order("zona", { ascending: true })
-      .order("via", { ascending: true });
+      .order("via", { ascending: true })
+      .order("tratto", { ascending: true });
 
     if (error) {
       console.error(error);
-      setErrorMessage("Errore nel caricamento di zone e vie.");
+      setErrorMessage("Errore nel caricamento di zone, vie e tratti.");
       setLoadingZoneVie(false);
       return;
     }
@@ -64,19 +66,40 @@ export default function Report() {
 
   const vieFiltrate = useMemo(() => {
     if (!zona) return [];
-    return zoneVie
-      .filter((item) => item.zona === zona)
-      .map((item) => item.via)
-      .sort((a, b) => a.localeCompare(b, "it"));
+
+    const uniqueVie = [
+      ...new Set(
+        zoneVie
+          .filter((item) => item.zona === zona)
+          .map((item) => item.via)
+      ),
+    ];
+
+    return uniqueVie.sort((a, b) => a.localeCompare(b, "it"));
   }, [zoneVie, zona]);
+
+  const trattiFiltrati = useMemo(() => {
+    if (!zona || !via) return [];
+
+    const uniqueTratti = [
+      ...new Set(
+        zoneVie
+          .filter((item) => item.zona === zona && item.via === via)
+          .map((item) => item.tratto)
+      ),
+    ];
+
+    return uniqueTratti.sort((a, b) => a.localeCompare(b, "it"));
+  }, [zoneVie, zona, via]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const matchZona = zona ? item.zona === zona : true;
       const matchVia = via ? item.via === via : true;
-      return matchZona && matchVia;
+      const matchTratto = tratto ? item.tratto === tratto : true;
+      return matchZona && matchVia && matchTratto;
     });
-  }, [items, zona, via]);
+  }, [items, zona, via, tratto]);
 
   const top10 = useMemo(() => {
     return [...items]
@@ -98,7 +121,9 @@ export default function Report() {
       (acc, item) => acc + Number(item.rating_totale || 0),
       0
     );
-    const massimo = Math.max(...filteredItems.map((item) => Number(item.rating_totale || 0)));
+    const massimo = Math.max(
+      ...filteredItems.map((item) => Number(item.rating_totale || 0))
+    );
     const media = somma / totale;
 
     return {
@@ -111,6 +136,12 @@ export default function Report() {
   function handleZonaChange(event) {
     setZona(event.target.value);
     setVia("");
+    setTratto("");
+  }
+
+  function handleViaChange(event) {
+    setVia(event.target.value);
+    setTratto("");
   }
 
   function getGradeStyle(gradeValue) {
@@ -133,17 +164,17 @@ export default function Report() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6 md:p-10">
+    <div className="p-6 md:p-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-slate-900">Report Segnalazioni</h1>
             <p className="mt-2 text-sm text-slate-600">
-              Filtra per zona e via, consulta i rating e visualizza il Top 10 delle criticità.
+              Filtra per zona, via e tratto, consulta i rating e visualizza il Top 10 delle criticità.
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Zona</label>
               <select
@@ -167,7 +198,7 @@ export default function Report() {
               <label className="mb-1 block text-sm font-medium text-slate-700">Via</label>
               <select
                 value={via}
-                onChange={(e) => setVia(e.target.value)}
+                onChange={handleViaChange}
                 disabled={!zona || loadingZoneVie}
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
               >
@@ -175,6 +206,25 @@ export default function Report() {
                   {!zona ? "Prima seleziona una zona" : "Tutte le vie"}
                 </option>
                 {vieFiltrate.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Tratto</label>
+              <select
+                value={tratto}
+                onChange={(e) => setTratto(e.target.value)}
+                disabled={!via || loadingZoneVie}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
+              >
+                <option value="">
+                  {!via ? "Prima seleziona una via" : "Tutti i tratti"}
+                </option>
+                {trattiFiltrati.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
@@ -230,20 +280,23 @@ export default function Report() {
                   <tr className="bg-slate-100 text-left">
                     <th className="p-3 font-semibold text-slate-700">Zona</th>
                     <th className="p-3 font-semibold text-slate-700">Via</th>
+                    <th className="p-3 font-semibold text-slate-700">Tratto</th>
                     <th className="p-3 font-semibold text-slate-700">Visibilità</th>
                     <th className="p-3 font-semibold text-slate-700">Traffico</th>
                     <th className="p-3 font-semibold text-slate-700">Lunghezza</th>
                     <th className="p-3 font-semibold text-slate-700">Larghezza</th>
                     <th className="p-3 font-semibold text-slate-700">Grade</th>
                     <th className="p-3 font-semibold text-slate-700">Rating</th>
+                    <th className="p-3 font-semibold text-slate-700">Note</th>
                     <th className="p-3 font-semibold text-slate-700">Data</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-200">
+                    <tr key={item.id} className="border-t border-slate-200 align-top">
                       <td className="p-3">{item.zona}</td>
                       <td className="p-3 font-medium text-slate-900">{item.via}</td>
+                      <td className="p-3">{item.tratto || "-"}</td>
                       <td className="p-3">{item.visibilita}</td>
                       <td className="p-3">{item.traffico}</td>
                       <td className="p-3">{item.lunghezza}</td>
@@ -259,6 +312,9 @@ export default function Report() {
                       </td>
                       <td className="p-3 font-bold text-slate-900">
                         {item.rating_totale ?? "-"}
+                      </td>
+                      <td className="p-3 max-w-xs whitespace-pre-wrap text-slate-600">
+                        {item.note?.trim() ? item.note : "-"}
                       </td>
                       <td className="p-3 text-slate-600">
                         {item.created_at
@@ -297,6 +353,7 @@ export default function Report() {
                     <th className="p-3 font-semibold text-slate-700">#</th>
                     <th className="p-3 font-semibold text-slate-700">Zona</th>
                     <th className="p-3 font-semibold text-slate-700">Via</th>
+                    <th className="p-3 font-semibold text-slate-700">Tratto</th>
                     <th className="p-3 font-semibold text-slate-700">Grade</th>
                     <th className="p-3 font-semibold text-slate-700">Rating</th>
                   </tr>
@@ -307,6 +364,7 @@ export default function Report() {
                       <td className="p-3 font-bold text-slate-900">{index + 1}</td>
                       <td className="p-3">{item.zona}</td>
                       <td className="p-3 font-medium text-slate-900">{item.via}</td>
+                      <td className="p-3">{item.tratto || "-"}</td>
                       <td className="p-3">
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeStyle(
