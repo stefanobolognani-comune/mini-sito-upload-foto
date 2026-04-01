@@ -267,43 +267,52 @@ export default function App() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((item) => (
               <article key={item.id} className={`overflow-hidden rounded-3xl border bg-slate-50 ${top3Ids.includes(item.id) ? "border-red-700 ring-4 ring-red-500 shadow-lg shadow-red-300" : "border-slate-200"}`}>
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.via} className="h-48 w-full object-cover" />
-                ) : (
-                  <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">Nessuna foto salvata</div>
-                )}
+  {item.image_url ? (
+    <img src={item.image_url} alt={item.via} className="h-48 w-full object-cover" />
+  ) : (
+    <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">Nessuna foto salvata</div>
+  )}
 
-                <div className="space-y-3 p-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900 uppercase">{item.via}</h3>
-                    <p className="text-sm font-medium text-slate-700">{item.tratto}</p>
-                    <p className="mt-1 text-sm text-slate-600">{item.zona}</p>
-                    <p className="mt-1 text-xs text-slate-400 italic">Creato il {new Date(item.created_at).toLocaleString("it-IT")}</p>
-                  </div>
+  <div className="space-y-4 p-4">
+    {/* 1. INFORMAZIONI GENERALI */}
+    <div>
+      <h3 className="text-lg font-semibold text-slate-900 uppercase">{item.via}</h3>
+      <p className="text-sm font-medium text-slate-700">{item.tratto}</p>
+      <p className="mt-1 text-sm text-slate-600">{item.zona}</p>
+      <p className="mt-1 text-xs text-slate-400 italic">Creato il {new Date(item.created_at).toLocaleString("it-IT")}</p>
+    </div>
 
-                  <div className="flex flex-wrap gap-2 text-[11px]">
-                     <span className={`rounded-full px-4 py-2 text-sm font-black uppercase tracking-wider shadow-sm ${getGradeStyle(item.grade)}`}>
-  {item.grade}
-                  </span>
-                    <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">Visibilità: {item.visibilita}</span>
-                    <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">Traffico: {item.traffico}</span>
-                    <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">Lunghezza: {item.lunghezza}</span>
-                    <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">Larghezza: {item.larghezza}</span>
-                   </div>
+    {/* 2. RATING TOTALE (SPOSTATO QUI) */}
+    <div className="rounded-2xl bg-white border border-slate-200 px-4 py-3 shadow-sm">
+      <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Rating totale</div>
+      <div className="text-3xl font-black text-slate-900">{item.rating_totale ?? "-"}</div>
+    </div>
 
-                  <div className="rounded-2xl bg-slate-100 px-4 py-2">
-                    <div className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Rating totale</div>
-                    <div className="text-2xl font-bold text-slate-900">{item.rating_totale ?? "-"}</div>
-                  </div>
+    {/* 3. BADGE E GRADE */}
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Grade Badge (Ora più grande come chiesto prima) */}
+      <span className={`rounded-full px-4 py-2 text-sm font-black uppercase tracking-wider shadow-sm ${getGradeStyle(item.grade)}`}>
+        {item.grade}
+      </span>
+      
+      {/* Altri mini-badge */}
+      <div className="flex flex-wrap gap-1 text-[10px] text-slate-500">
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Vis: {item.visibilita}</span>
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Traf: {item.traffico}</span>
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Lung: {item.lunghezza}</span>
+        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Larg: {item.larghezza}</span>
+      </div>
+    </div>
 
-                  <div className="rounded-2xl bg-slate-100 px-4 py-2">
-                    <div className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Note</div>
-                    <div className="mt-1 text-sm text-slate-700 italic leading-snug">
-                      {item.note?.trim() ? item.note : "Nessuna nota aggiuntiva."}
-                    </div>
-                  </div>
-                </div>
-              </article>
+    {/* 4. NOTE */}
+    <div className="rounded-2xl bg-slate-100 px-4 py-2">
+      <div className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Note</div>
+      <div className="mt-1 text-sm text-slate-700 italic leading-snug">
+        {item.note?.trim() ? item.note : "Nessuna nota aggiuntiva."}
+      </div>
+    </div>
+  </div>
+</article>
             ))}
           </div>
         </section>
