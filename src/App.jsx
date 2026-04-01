@@ -46,6 +46,13 @@ export default function App() {
     return zona && via && visibilita && traffico && lunghezza && larghezza && grade && !loading;
   }, [zona, via, visibilita, traffico, lunghezza, larghezza, grade, loading]);
 
+const top3Ids = useMemo(() => {
+  return [...items]
+    .sort((a, b) => (b.rating_totale || 0) - (a.rating_totale || 0))
+    .slice(0, 3)
+    .map((item) => item.id);
+}, [items]);
+
   useEffect(() => {
     loadItems();
     loadZoneVie();
@@ -502,7 +509,14 @@ export default function App() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {items.map((item) => (
-                <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
+                <article
+  key={item.id}
+  className={`overflow-hidden rounded-3xl border bg-slate-50 ${
+    top3Ids.includes(item.id)
+      ? "border-red-500 ring-2 ring-red-300"
+      : "border-slate-200"
+  }`}
+>
                   {item.image_url ? (
                     <img
                       src={item.image_url}
