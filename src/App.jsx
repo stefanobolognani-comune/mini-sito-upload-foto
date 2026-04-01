@@ -286,7 +286,10 @@ export default function App() {
                     <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">Traffico: {item.traffico}</span>
                     <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">Lunghezza: {item.lunghezza}</span>
                     <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">Larghezza: {item.larghezza}</span>
-                    <span className={`rounded-full px-2 py-1 font-bold ${getGradeStyle(item.grade)}`}>{item.grade}</span>
+                    // Sostituiscila con questa (più grande e leggibile):
+                  <span className={`rounded-full px-4 py-2 text-sm font-black uppercase tracking-wider shadow-sm ${getGradeStyle(item.grade)}`}>
+  {item.grade}
+                  </span>
                   </div>
 
                   <div className="rounded-2xl bg-slate-100 px-4 py-2">
