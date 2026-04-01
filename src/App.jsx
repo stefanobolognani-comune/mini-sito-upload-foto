@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "./supabaseClient";
 
 export default function App() {
   const [visibilita, setVisibilita] = useState("");
@@ -9,6 +10,9 @@ export default function App() {
   const [titolo, setTitolo] = useState("");
   const [foto, setFoto] = useState(null);
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const visibilitaList = ["ALTA", "MEDIA", "BASSA"];
   const trafficoList = ["ALTO", "MEDIO", "BASSO"];
@@ -17,8 +21,31 @@ export default function App() {
   const gradeList = ["Nuova", "Buona", "Discreta", "Scadente", "Pessima", "Critica"];
 
   const canAdd = useMemo(() => {
-    return titolo.trim() && visibilita && traffico && lunghezza && larghezza && grade;
-  }, [titolo, visibilita, traffico, lunghezza, larghezza, grade]);
+    return titolo.trim() && visibilita && traffico && lunghezza && larghezza && grade && !loading;
+  }, [titolo, visibilita, traffico, lunghezza, larghezza, grade, loading]);
+
+  useEffect(() => {
+    loadItems();
+  }, []);
+
+  async function loadItems() {
+    setLoadingList(true);
+    setErrorMessage("");
+
+    const { data, error } = await supabase
+      .from("segnalazioni")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setErrorMessage("Errore nel caricamento dei dati.");
+      setLoadingList(false);
+      return;
+    }
+
+    setItems(data || []);
+    setLoadingList(false);
+  }
 
   function handlePhotoChange(event) {
     const file = event.target.files?.[0];
@@ -38,22 +65,37 @@ export default function App() {
     reader.readAsDataURL(file);
   }
 
-  function addItem() {
+  async function addItem() {
     if (!canAdd) return;
 
-    const newItem = {
-      id: crypto.randomUUID(),
+    setLoading(true);
+    setErrorMessage("");
+
+    const payload = {
       titolo: titolo.trim(),
       visibilita,
       traffico,
       lunghezza,
       larghezza,
       grade,
-      foto,
-      createdAt: new Date().toLocaleString("it-IT"),
     };
 
-    setItems((prev) => [newItem, ...prev]);
+    const { data, error } = await supabase
+      .from("segnalazioni")
+      .insert([payload])
+      .select();
+
+    if (error) {
+      setErrorMessage("Errore nel salvataggio dei dati.");
+      setLoading(false);
+      return;
+    }
+
+    const savedItem = data?.[0];
+    if (savedItem) {
+      setItems((prev) => [savedItem, ...prev]);
+    }
+
     setTitolo("");
     setVisibilita("");
     setTraffico("");
@@ -64,9 +106,11 @@ export default function App() {
 
     const fileInput = document.getElementById("foto-upload");
     if (fileInput) fileInput.value = "";
+
+    setLoading(false);
   }
 
-  function removeItem(id) {
+  function removeItemFromView(id) {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }
 
@@ -78,7 +122,7 @@ export default function App() {
             <h1 className="text-2xl font-bold text-slate-900">ASSESSORATO URBANISTICA</h1>
             <h1 className="text-2xl font-bold text-slate-900">RAFFAELE DIEGO STEFANO</h1>
             <p className="mt-2 text-sm text-slate-600">
-              Compila i campi, carica una foto e aggiungi la scheda alla lista.
+              Compila i campi e salva la scheda nel database.
             </p>
           </div>
 
@@ -103,9 +147,7 @@ export default function App() {
               >
                 <option value="">Seleziona visibilità</option>
                 {visibilitaList.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </div>
@@ -119,9 +161,7 @@ export default function App() {
               >
                 <option value="">Seleziona traffico</option>
                 {trafficoList.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </div>
@@ -135,9 +175,7 @@ export default function App() {
               >
                 <option value="">Seleziona lunghezza</option>
                 {lunghezzaList.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </div>
@@ -151,9 +189,7 @@ export default function App() {
               >
                 <option value="">Seleziona larghezza</option>
                 {larghezzaList.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </div>
@@ -167,9 +203,7 @@ export default function App() {
               >
                 <option value="">Seleziona grade</option>
                 {gradeList.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </div>
@@ -183,6 +217,9 @@ export default function App() {
                 onChange={handlePhotoChange}
                 className="block w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700"
               />
+              <p className="mt-1 text-xs text-slate-500">
+                Per ora la foto è solo anteprima locale. Non viene ancora salvata su Supabase.
+              </p>
             </div>
 
             {foto?.preview && (
@@ -192,12 +229,18 @@ export default function App() {
               </div>
             )}
 
+            {errorMessage && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
+
             <button
               onClick={addItem}
               disabled={!canAdd}
               className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Aggiungi alla lista
+              {loading ? "Salvataggio..." : "Aggiungi alla lista"}
             </button>
           </div>
         </section>
@@ -206,14 +249,20 @@ export default function App() {
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-slate-900">Lista inserimenti</h2>
-              <p className="mt-1 text-sm text-slate-600">Le schede restano solo nella sessione del browser.</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Dati letti dal database Supabase.
+              </p>
             </div>
             <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
               Totale: {items.length}
             </div>
           </div>
 
-          {items.length === 0 ? (
+          {loadingList ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+              Caricamento dati...
+            </div>
+          ) : items.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
               Nessun elemento ancora. Compila il form qui a sinistra.
             </div>
@@ -221,18 +270,20 @@ export default function App() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {items.map((item) => (
                 <article key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
-                  {item.foto?.preview ? (
-                    <img src={item.foto.preview} alt={item.titolo} className="h-48 w-full object-cover" />
+                  {foto?.preview ? (
+                    <img src={foto.preview} alt={item.titolo} className="h-48 w-full object-cover" />
                   ) : (
                     <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">
-                      Nessuna foto
+                      Nessuna foto salvata
                     </div>
                   )}
 
                   <div className="space-y-3 p-4">
                     <div>
                       <h3 className="text-lg font-semibold text-slate-900">{item.titolo}</h3>
-                      <p className="mt-1 text-xs text-slate-500">Creato il {item.createdAt}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Creato il {new Date(item.created_at).toLocaleString("it-IT")}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap gap-2 text-sm">
@@ -254,10 +305,10 @@ export default function App() {
                     </div>
 
                     <button
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItemFromView(item.id)}
                       className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                     >
-                      Elimina
+                      Rimuovi solo dalla vista
                     </button>
                   </div>
                 </article>
