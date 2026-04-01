@@ -165,36 +165,36 @@ export default function App() {
     grade: gradeValue,
   }) {
     const scoreVisibilitaMap = {
-      ALTA: 1,
-      MEDIA: 2,
-      BASSA: 3,
+      ALTA: 5,
+      MEDIA: 3,
+      BASSA: 1,
     };
 
     const scoreTrafficoMap = {
       BASSO: 1,
-      MEDIO: 2,
-      ALTO: 3,
+      MEDIO: 3,
+      ALTO: 5,
     };
 
     const scoreLunghezzaMap = {
       CORTA: 1,
-      MEDIA: 2,
-      LUNGA: 3,
+      MEDIA: 3,
+      LUNGA: 5,
     };
 
     const scoreLarghezzaMap = {
-      LARGA: 1,
-      MEDIA: 2,
-      STRETTA: 3,
+      LARGA: 5,
+      MEDIA: 3,
+      STRETTA: 1,
     };
 
     const scoreGradeMap = {
-      Nuova: 1,
-      Buona: 2,
-      Discreta: 3,
-      Scadente: 4,
-      Pessima: 5,
-      Critica: 6,
+      Nuova: 0,
+      Buona: 1,
+      Discreta: 2,
+      Scadente: 3,
+      Pessima: 4,
+      Critica: 5,
     };
 
     return {
@@ -208,11 +208,11 @@ export default function App() {
 
   function calculateRating(scores) {
     const PESI = {
-      visibilita: 0.2,
-      traffico: 0.2,
-      lunghezza: 0.15,
+      visibilita: 0.1,
+      traffico: 0.25,
+      lunghezza: 0.10,
       larghezza: 0.15,
-      grade: 0.3,
+      grade: 0.4,
     };
 
     const totale =
