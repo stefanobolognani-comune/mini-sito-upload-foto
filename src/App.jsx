@@ -301,12 +301,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6 md:p-10">
+    <div className="p-6 md:p-10">
       <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[420px_1fr]">
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">ASSESSORATO URBANISTICA</h1>
-            <h1 className="text-2xl font-bold text-slate-900">RAFFAELE DIEGO STEFANO</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Inserimento segnalazione</h1>
             <p className="mt-2 text-sm text-slate-600">
               Seleziona zona e via, compila i campi, carica una foto e salva la scheda.
             </p>
@@ -470,10 +469,8 @@ export default function App() {
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Lista inserimenti</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Dati e immagini letti da Supabase.
-              </p>
+              <h2 className="text-xl font-bold text-slate-900">Ultime segnalazioni</h2>
+              <p className="mt-1 text-sm text-slate-600">Dati e immagini letti da Supabase.</p>
             </div>
             <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
               Totale: {items.length}
