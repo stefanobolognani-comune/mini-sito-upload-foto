@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
-import * as XLSX from "xlsx"; // <--- Ricordati di installare questa libreria
+import * as XLSX from "xlsx";
 
 export default function Report() {
   const [zona, setZona] = useState("");
@@ -80,10 +80,10 @@ export default function Report() {
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Segnalazioni");
-    XLSX.writeFile(workbook, `Report_Segnalazioni_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(workbook, `Report_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
-  // FUNZIONE SALVA NOTA SU SUPABASE
+  // FUNZIONE SALVA NOTA
   async function handleSaveNote() {
     if (!editingItem) return;
 
@@ -127,10 +127,6 @@ export default function Report() {
     });
   }, [items, zona, via, tratto]);
 
-  const top10 = useMemo(() => {
-    return [...items].sort((a, b) => (b.rating_totale || 0) - (a.rating_totale || 0)).slice(0, 10);
-  }, [items]);
-
   const stats = useMemo(() => {
     if (filteredItems.length === 0) return { totale: 0, media: 0, massimo: 0 };
     const totale = filteredItems.length;
@@ -138,17 +134,6 @@ export default function Report() {
     const massimo = Math.max(...filteredItems.map((item) => Number(item.rating_totale || 0)));
     return { totale, media: Number((somma / totale).toFixed(2)), massimo: Number(massimo.toFixed(2)) };
   }, [filteredItems]);
-
-  function handleZonaChange(event) {
-    setZona(event.target.value);
-    setVia("");
-    setTratto("");
-  }
-
-  function handleViaChange(event) {
-    setVia(event.target.value);
-    setTratto("");
-  }
 
   function getGradeStyle(gradeValue) {
     switch (gradeValue) {
@@ -163,135 +148,118 @@ export default function Report() {
   }
 
   return (
-    <div className="p-6 md:p-10 bg-slate-50 min-h-screen text-slate-900">
+    <div className="p-4 md:p-10 bg-slate-50 min-h-screen">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* HEADER FILTRI */}
+        
+        {/* FILTRI */}
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-900">Report Segnalazioni</h1>
-            <p className="mt-2 text-sm text-slate-600">Filtra per zona, via e tratto.</p>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-6">Report Urbanistica</h1>
           <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Zona</label>
-              <select value={zona} onChange={handleZonaChange} disabled={loadingZoneVie} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500 disabled:bg-slate-100">
-                <option value="">{loadingZoneVie ? "Caricamento..." : "Tutte le zone"}</option>
-                {zoneList.map((z) => <option key={z} value={z}>{z}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Via</label>
-              <select value={via} onChange={handleViaChange} disabled={!zona} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500 disabled:bg-slate-100">
-                <option value="">{!zona ? "Seleziona zona" : "Tutte le vie"}</option>
-                {vieFiltrate.map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Tratto</label>
-              <select value={tratto} onChange={(e) => setTratto(e.target.value)} disabled={!via} className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500 disabled:bg-slate-100">
-                <option value="">{!via ? "Seleziona via" : "Tutti i tratti"}</option>
-                {trattiFiltrati.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
+            <select value={zona} onChange={(e) => {setZona(e.target.value); setVia(""); setTratto("");}} className="w-full rounded-2xl border border-slate-300 p-3 outline-none focus:border-blue-500">
+              <option value="">Tutte le zone</option>
+              {zoneList.map(z => <option key={z} value={z}>{z}</option>)}
+            </select>
+            <select value={via} onChange={(e) => {setVia(e.target.value); setTratto("");}} disabled={!zona} className="w-full rounded-2xl border border-slate-300 p-3 outline-none focus:border-blue-500 disabled:bg-slate-50">
+              <option value="">Tutte le vie</option>
+              {vieFiltrate.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+            <select value={tratto} onChange={(e) => setTratto(e.target.value)} disabled={!via} className="w-full rounded-2xl border border-slate-300 p-3 outline-none focus:border-blue-500 disabled:bg-slate-50">
+              <option value="">Tutti i tratti</option>
+              {trattiFiltrati.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
         </section>
 
-        {/* STATISTICHE */}
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="text-sm text-slate-500">Segnalazioni filtrate</div>
-            <div className="mt-2 text-3xl font-bold">{stats.totale}</div>
+        {/* STATS RAPIDE */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white p-4 rounded-3xl shadow-sm ring-1 ring-slate-200 text-center">
+            <div className="text-xs text-slate-400 uppercase font-bold">Totale</div>
+            <div className="text-2xl font-black">{stats.totale}</div>
           </div>
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="text-sm text-slate-500">Rating medio</div>
-            <div className="mt-2 text-3xl font-bold">{stats.media}</div>
+          <div className="bg-white p-4 rounded-3xl shadow-sm ring-1 ring-slate-200 text-center">
+            <div className="text-xs text-slate-400 uppercase font-bold">Media</div>
+            <div className="text-2xl font-black text-blue-600">{stats.media}</div>
           </div>
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="text-sm text-slate-500">Rating massimo</div>
-            <div className="mt-2 text-3xl font-bold">{stats.massimo}</div>
+          <div className="bg-white p-4 rounded-3xl shadow-sm ring-1 ring-slate-200 text-center">
+            <div className="text-xs text-slate-400 uppercase font-bold">Max</div>
+            <div className="text-2xl font-black text-red-600">{stats.massimo}</div>
           </div>
-        </section>
+        </div>
 
-        {/* SCHEDA TABELLARE */}
-        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold">Scheda tabellare</h2>
-              <p className="text-sm text-slate-600">Dettaglio completo.</p>
-            </div>
-            <button
-              onClick={exportToExcel}
-              disabled={filteredItems.length === 0}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 shadow-sm"
-            >
+        {/* TABELLA */}
+        <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+            <h2 className="text-lg font-bold">Dettaglio Segnalazioni</h2>
+            <button onClick={exportToExcel} className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-green-700 transition">
               Esporta Excel
             </button>
           </div>
 
-          {loadingItems ? (
-            <div className="p-10 text-center text-slate-500 italic">Caricamento dati...</div>
-          ) : filteredItems.length === 0 ? (
-            <div className="p-10 text-center text-slate-500 italic">Nessun dato trovato.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse text-sm text-left">
-                <thead>
-                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-700">
-                    <th className="p-3 font-semibold">Zona/Via/Tratto</th>
-                    <th className="p-3 font-semibold">Dati Tecnici</th>
-                    <th className="p-3 font-semibold">Grade/Rating</th>
-                    <th className="p-3 font-semibold">Note</th>
-                    <th className="p-3 font-semibold text-right">Azioni</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider">
+                  <th className="p-4 font-bold">Località</th>
+                  <th className="p-4 font-bold">Dati Tecnici</th>
+                  <th className="p-4 font-bold text-center">Rating</th>
+                  <th className="p-4 font-bold">Note</th>
+                  <th className="p-4 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {filteredItems.map((item) => (
+                  <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition">
+                    <td className="p-4">
+                      <div className="font-bold text-slate-900 leading-tight">{item.via}</div>
+                      <div className="text-[10px] text-slate-400 uppercase font-medium">{item.zona} {item.tratto ? `• ${item.tratto}` : ""}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-1 mb-1 text-[10px] font-bold">
+                        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 uppercase">V: {item.visibilita}</span>
+                        <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 uppercase">T: {item.traffico}</span>
+                      </div>
+                      <div className="text-slate-500 text-[11px]">Dim: <span className="font-bold text-slate-700">{item.lunghezza}x{item.larghezza}m</span></div>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className={`block mx-auto w-fit px-2 py-0.5 rounded-full text-[9px] font-black uppercase mb-1 ${getGradeStyle(item.grade)}`}>{item.grade}</span>
+                      <span className="text-lg font-black text-slate-900">{item.rating_totale}</span>
+                    </td>
+                    <td className="p-4 text-[11px] italic text-slate-400 max-w-[200px] truncate">
+                      {item.note || "—"}
+                    </td>
+                    <td className="p-4 text-right">
+                      <button 
+                        onClick={() => { setEditingItem(item); setTempNote(item.note || ""); setIsModalOpen(true); }}
+                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredItems.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition">
-                      <td className="p-3">
-                        <div className="font-bold">{item.via}</div>
-                        <div className="text-[10px] text-slate-500 uppercase">{item.zona} • {item.tratto || "-"}</div>
-                      </td>
-                      <td className="p-3 text-xs">
-                        Vis: {item.visibilita} | Traff: {item.traffico}<br/>
-                        Dim: {item.lunghezza}x{item.larghezza}m
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold mr-2 ${getGradeStyle(item.grade)}`}>{item.grade}</span>
-                        <span className="font-black text-lg">{item.rating_totale}</span>
-                      </td>
-                      <td className="p-3 text-slate-600 italic max-w-xs truncate">{item.note || "-"}</td>
-                      <td className="p-3 text-right">
-                        <button
-                          onClick={() => { setEditingItem(item); setTempNote(item.note || ""); setIsModalOpen(true); }}
-                          className="rounded-xl bg-slate-100 p-2 text-slate-600 hover:bg-blue-100 hover:text-blue-600 transition"
-                        >
-                          Modifica
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
 
-      {/* MODAL PER MODIFICA NOTE */}
+      {/* MODAL NOTE */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl ring-1 ring-slate-200">
-            <h2 className="text-xl font-bold text-slate-900">Modifica Note</h2>
-            <p className="text-xs text-slate-500 mb-4 uppercase tracking-widest">{editingItem?.via}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-bold mb-1">Note Tecniche</h2>
+            <p className="text-[10px] text-slate-400 uppercase mb-4">{editingItem?.via}</p>
             <textarea
               value={tempNote}
               onChange={(e) => setTempNote(e.target.value)}
-              className="h-40 w-full rounded-2xl border border-slate-300 p-4 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition resize-none"
-              placeholder="Aggiungi una nota..."
+              className="w-full h-32 rounded-2xl border border-slate-200 p-4 text-sm outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition"
+              placeholder="Inserisci osservazioni..."
             />
-            <div className="mt-6 flex gap-3">
-              <button onClick={() => setIsModalOpen(false)} className="flex-1 rounded-2xl bg-slate-100 py-3 font-semibold text-slate-600 hover:bg-slate-200 transition">Annulla</button>
-              <button onClick={handleSaveNote} className="flex-1 rounded-2xl bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 transition shadow-md">Salva Nota</button>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => setIsModalOpen(false)} className="flex-1 p-3 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-2xl transition">Annulla</button>
+              <button onClick={handleSaveNote} className="flex-1 p-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg shadow-blue-200 transition">Salva</button>
             </div>
           </div>
         </div>
