@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx"; // <--- AGGIUNTO
 
 export default function Report() {
   const [zona, setZona] = useState("");
@@ -21,50 +21,59 @@ export default function Report() {
 
   async function loadSegnalazioni() {
     setLoadingItems(true);
+    setErrorMessage("");
+
     const { data, error } = await supabase
       .from("segnalazioni")
       .select("*")
       .order("rating_totale", { ascending: false });
 
     if (error) {
-      setErrorMessage("Errore nel caricamento dati.");
+      console.error(error);
+      setErrorMessage("Errore nel caricamento delle segnalazioni.");
       setLoadingItems(false);
       return;
     }
+
     setItems(data || []);
     setLoadingItems(false);
   }
 
   async function loadZoneVie() {
     setLoadingZoneVie(true);
+
     const { data, error } = await supabase
       .from("zone_vie")
       .select("zona, via, tratto")
       .order("zona", { ascending: true })
-      .order("via", { ascending: true });
+      .order("via", { ascending: true })
+      .order("tratto", { ascending: true });
 
     if (error) {
+      console.error(error);
+      setErrorMessage("Errore nel caricamento di zone, vie e tratti.");
       setLoadingZoneVie(false);
       return;
     }
+
     setZoneVie(data || []);
     setLoadingZoneVie(false);
   }
 
-  // --- FUNZIONE EXPORT (Include le Note) ---
+  // --- FUNZIONE EXPORT EXCEL AGGIUNTA ---
   const exportToExcel = () => {
     const dataToExport = filteredItems.map((item) => ({
-      ZONA: item.zona,
-      VIA: item.via,
-      TRATTO: item.tratto || "-",
-      VISIBILITÀ: item.visibilita,
-      TRAFFICO: item.traffico,
-      LUNGHEZZA: item.lunghezza,
-      LARGHEZZA: item.larghezza,
-      GRADO: item.grade,
-      RATING: item.rating_totale,
-      NOTE: item.note || "", // <--- Note incluse qui
-      DATA: item.created_at ? new Date(item.created_at).toLocaleDateString("it-IT") : "-",
+      Zona: item.zona,
+      Via: item.via,
+      Tratto: item.tratto || "-",
+      Visibilità: item.visibilita,
+      Traffico: item.traffico,
+      Lunghezza: item.lunghezza,
+      Larghezza: item.larghezza,
+      Grade: item.grade,
+      Rating: item.rating_totale,
+      Note: item.note || "-",
+      Data: item.created_at ? new Date(item.created_at).toLocaleString("it-IT") : "-",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -74,128 +83,340 @@ export default function Report() {
   };
 
   const zoneList = useMemo(() => {
-    return [...new Set(zoneVie.map((item) => item.zona))].sort();
+    const uniqueZones = [...new Set(zoneVie.map((item) => item.zona))];
+    return uniqueZones.sort((a, b) => a.localeCompare(b, "it"));
   }, [zoneVie]);
 
   const vieFiltrate = useMemo(() => {
     if (!zona) return [];
-    return [...new Set(zoneVie.filter((i) => i.zona === zona).map((i) => i.via))].sort();
+
+    const uniqueVie = [
+      ...new Set(
+        zoneVie
+          .filter((item) => item.zona === zona)
+          .map((item) => item.via)
+      ),
+    ];
+
+    return uniqueVie.sort((a, b) => a.localeCompare(b, "it"));
   }, [zoneVie, zona]);
 
   const trattiFiltrati = useMemo(() => {
-    if (!via) return [];
-    return [...new Set(zoneVie.filter((i) => i.via === via).map((i) => i.tratto))].sort();
-  }, [zoneVie, via]);
+    if (!zona || !via) return [];
+
+    const uniqueTratti = [
+      ...new Set(
+        zoneVie
+          .filter((item) => item.zona === zona && item.via === via)
+          .map((item) => item.tratto)
+      ),
+    ];
+
+    return uniqueTratti.sort((a, b) => a.localeCompare(b, "it"));
+  }, [zoneVie, zona, via]);
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      return (zona ? item.zona === zona : true) &&
-             (via ? item.via === via : true) &&
-             (tratto ? item.tratto === tratto : true);
+      const matchZona = zona ? item.zona === zona : true;
+      const matchVia = via ? item.via === via : true;
+      const matchTratto = tratto ? item.tratto === tratto : true;
+      return matchZona && matchVia && matchTratto;
     });
   }, [items, zona, via, tratto]);
 
-  function getGradeStyle(grade) {
-    const styles = {
-      "Nuova": "bg-blue-50 text-blue-600",
-      "Buona": "bg-green-50 text-green-600",
-      "Discreta": "bg-yellow-50 text-yellow-600",
-      "Scadente": "bg-orange-50 text-orange-600",
-      "Pessima": "bg-red-50 text-red-600",
-      "Critica": "bg-red-600 text-white"
+  const top10 = useMemo(() => {
+    return [...items]
+      .sort((a, b) => (b.rating_totale || 0) - (a.rating_totale || 0))
+      .slice(0, 10);
+  }, [items]);
+
+  const stats = useMemo(() => {
+    if (filteredItems.length === 0) {
+      return {
+        totale: 0,
+        media: 0,
+        massimo: 0,
+      };
+    }
+
+    const totale = filteredItems.length;
+    const somma = filteredItems.reduce(
+      (acc, item) => acc + Number(item.rating_totale || 0),
+      0
+    );
+    const massimo = Math.max(
+      ...filteredItems.map((item) => Number(item.rating_totale || 0))
+    );
+    const media = somma / totale;
+
+    return {
+      totale,
+      media: Number(media.toFixed(2)),
+      massimo: Number(massimo.toFixed(2)),
     };
-    return styles[grade] || "bg-slate-50 text-slate-400";
+  }, [filteredItems]);
+
+  function handleZonaChange(event) {
+    setZona(event.target.value);
+    setVia("");
+    setTratto("");
+  }
+
+  function handleViaChange(event) {
+    setVia(event.target.value);
+    setTratto("");
+  }
+
+  function getGradeStyle(gradeValue) {
+    switch (gradeValue) {
+      case "Nuova":
+        return "bg-blue-100 text-blue-800";
+      case "Buona":
+        return "bg-green-100 text-green-800";
+      case "Discreta":
+        return "bg-yellow-100 text-yellow-800";
+      case "Scadente":
+        return "bg-orange-100 text-orange-800";
+      case "Pessima":
+        return "bg-red-200 text-red-900";
+      case "Critica":
+        return "bg-red-600 text-white";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 text-slate-800">
+    <div className="p-6 md:p-10">
       <div className="mx-auto max-w-7xl space-y-6">
-        
-        {/* HEADER & FILTRI */}
-        <header className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900">Database Segnalazioni</h1>
-              <p className="text-sm text-slate-500">Visualizzazione e analisi dei dati tecnici rilevati.</p>
+              <h1 className="text-2xl font-bold text-slate-900">Report Segnalazioni</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                Filtra per zona, via e tratto, consulta i rating e visualizza il Top 10 delle criticità.
+              </p>
             </div>
-            <button 
+            {/* BOTTONE EXCEL AGGIUNTO */}
+            <button
               onClick={exportToExcel}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-bold text-sm transition shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+              disabled={filteredItems.length === 0}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-bold text-sm transition shadow-lg shadow-green-100 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
               ESPORTA EXCEL
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <select value={zona} onChange={(e) => {setZona(e.target.value); setVia("");}} className="bg-slate-50 border-none rounded-2xl p-3 text-sm focus:ring-2 focus:ring-slate-200 transition">
-              <option value="">Tutte le Zone</option>
-              {zoneList.map(z => <option key={z} value={z}>{z}</option>)}
-            </select>
-            <select value={via} onChange={(e) => {setVia(e.target.value); setTratto("");}} disabled={!zona} className="bg-slate-50 border-none rounded-2xl p-3 text-sm focus:ring-2 focus:ring-slate-200 transition disabled:opacity-50">
-              <option value="">Tutte le Vie</option>
-              {vieFiltrate.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-            <select value={tratto} onChange={(e) => setTratto(e.target.value)} disabled={!via} className="bg-slate-50 border-none rounded-2xl p-3 text-sm focus:ring-2 focus:ring-slate-200 transition disabled:opacity-50">
-              <option value="">Tutti i Tratti</option>
-              {trattiFiltrati.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-        </header>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Zona</label>
+              <select
+                value={zona}
+                onChange={handleZonaChange}
+                disabled={loadingZoneVie}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
+              >
+                <option value="">
+                  {loadingZoneVie ? "Caricamento zone..." : "Tutte le zone"}
+                </option>
+                {zoneList.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        {/* TABELLA DATI */}
-        <main className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-400 font-bold">
-                  <th className="p-4">Località</th>
-                  <th className="p-4 text-center">Dati Tecnici</th>
-                  <th className="p-4 text-center">Rating / Grado</th>
-                  <th className="p-4">Note</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm divide-y divide-slate-50">
-                {loadingItems ? (
-                  <tr><td colSpan="4" className="p-10 text-center text-slate-400 italic">Caricamento in corso...</td></tr>
-                ) : filteredItems.length === 0 ? (
-                  <tr><td colSpan="4" className="p-10 text-center text-slate-400 italic">Nessun dato corrispondente ai filtri.</td></tr>
-                ) : (
-                  filteredItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/30 transition">
-                      <td className="p-4">
-                        <div className="font-bold text-slate-900">{item.via}</div>
-                        <div className="text-[10px] text-slate-400 uppercase font-semibold">{item.zona} {item.tratto && `• ${item.tratto}`}</div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="flex gap-1">
-                            <span className="text-[9px] bg-slate-100 px-1 rounded text-slate-500 font-bold">V: {item.visibilita}</span>
-                            <span className="text-[9px] bg-slate-100 px-1 rounded text-slate-500 font-bold">T: {item.traffico}</span>
-                          </div>
-                          <div className="text-[11px] text-slate-600 font-medium">{item.lunghezza} x {item.larghezza} m</div>
-                        </div>
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="text-lg font-black text-slate-900 leading-none">{item.rating_totale}</div>
-                        <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase ${getGradeStyle(item.grade)}`}>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Via</label>
+              <select
+                value={via}
+                onChange={handleViaChange}
+                disabled={!zona || loadingZoneVie}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
+              >
+                <option value="">
+                  {!zona ? "Prima seleziona una zona" : "Tutte le vie"}
+                </option>
+                {vieFiltrate.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Tratto</label>
+              <select
+                value={tratto}
+                onChange={(e) => setTratto(e.target.value)}
+                disabled={!via || loadingZoneVie}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-slate-500 disabled:bg-slate-100"
+              >
+                <option value="">
+                  {!via ? "Prima seleziona una via" : "Tutti i tratti"}
+                </option>
+                {trattiFiltrati.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {errorMessage && (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="text-sm text-slate-500">Segnalazioni filtrate</div>
+            <div className="mt-2 text-3xl font-bold text-slate-900">{stats.totale}</div>
+          </div>
+
+          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="text-sm text-slate-500">Rating medio</div>
+            <div className="mt-2 text-3xl font-bold text-slate-900">{stats.media}</div>
+          </div>
+
+          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <div className="text-sm text-slate-500">Rating massimo</div>
+            <div className="mt-2 text-3xl font-bold text-slate-900">{stats.massimo}</div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-slate-900">Scheda tabellare</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Dettaglio completo delle segnalazioni filtrate.
+            </p>
+          </div>
+
+          {loadingItems ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+              Caricamento dati...
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+              Nessun dato trovato per i filtri selezionati.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-100 text-left">
+                    <th className="p-3 font-semibold text-slate-700">Zona</th>
+                    <th className="p-3 font-semibold text-slate-700">Via</th>
+                    <th className="p-3 font-semibold text-slate-700">Tratto</th>
+                    <th className="p-3 font-semibold text-slate-700">Visibilità</th>
+                    <th className="p-3 font-semibold text-slate-700">Traffico</th>
+                    <th className="p-3 font-semibold text-slate-700">Lunghezza</th>
+                    <th className="p-3 font-semibold text-slate-700">Larghezza</th>
+                    <th className="p-3 font-semibold text-slate-700">Grade</th>
+                    <th className="p-3 font-semibold text-slate-700">Rating</th>
+                    <th className="p-3 font-semibold text-slate-700">Note</th>
+                    <th className="p-3 font-semibold text-slate-700">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item) => (
+                    <tr key={item.id} className="border-t border-slate-200 align-top">
+                      <td className="p-3">{item.zona}</td>
+                      <td className="p-3 font-medium text-slate-900">{item.via}</td>
+                      <td className="p-3">{item.tratto || "-"}</td>
+                      <td className="p-3">{item.visibilita}</td>
+                      <td className="p-3">{item.traffico}</td>
+                      <td className="p-3">{item.lunghezza}</td>
+                      <td className="p-3">{item.larghezza}</td>
+                      <td className="p-3">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeStyle(
+                            item.grade
+                          )}`}
+                        >
                           {item.grade}
                         </span>
                       </td>
-                      <td className="p-4">
-                        <p className="text-[11px] text-slate-500 italic leading-relaxed max-w-xs">
-                          {item.note || "—"}
-                        </p>
+                      <td className="p-3 font-bold text-slate-900">
+                        {item.rating_totale ?? "-"}
+                      </td>
+                      <td className="p-3 max-w-xs whitespace-pre-wrap text-slate-600">
+                        {item.note?.trim() ? item.note : "-"}
+                      </td>
+                      <td className="p-3 text-slate-600">
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleString("it-IT")
+                          : "-"}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-slate-900">Top 10 Rating più alti</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Le segnalazioni con priorità più alta in base al rating calcolato.
+            </p>
           </div>
-        </main>
+
+          {loadingItems ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+              Caricamento classifica...
+            </div>
+          ) : top10.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+              Nessun dato disponibile.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-100 text-left">
+                    <th className="p-3 font-semibold text-slate-700">#</th>
+                    <th className="p-3 font-semibold text-slate-700">Zona</th>
+                    <th className="p-3 font-semibold text-slate-700">Via</th>
+                    <th className="p-3 font-semibold text-slate-700">Tratto</th>
+                    <th className="p-3 font-semibold text-slate-700">Grade</th>
+                    <th className="p-3 font-semibold text-slate-700">Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {top10.map((item, index) => (
+                    <tr key={item.id} className="border-t border-slate-200">
+                      <td className="p-3 font-bold text-slate-900">{index + 1}</td>
+                      <td className="p-3">{item.zona}</td>
+                      <td className="p-3 font-medium text-slate-900">{item.via}</td>
+                      <td className="p-3">{item.tratto || "-"}</td>
+                      <td className="p-3">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-medium ${getGradeStyle(
+                            item.grade
+                          )}`}
+                        >
+                          {item.grade}
+                        </span>
+                      </td>
+                      <td className="p-3 text-lg font-bold text-slate-900">
+                        {item.rating_totale ?? "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
