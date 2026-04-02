@@ -282,10 +282,10 @@ export default function App() {
       <p className="mt-1 text-xs text-slate-400 italic">Creato il {new Date(item.created_at).toLocaleString("it-IT")}</p>
     </div>
 
-    {/* 2. RATING TOTALE (SPOSTATO QUI) con colore dinamico*/}
-    <div className={`rounded-2xl bg-white border px-4 py-3 shadow-sm ${
-  item.rating_totale < 2 ? "border-green-100" : 
-  item.rating_totale <= 3.9 ? "border-yellow-100" : "border-red-100"
+{/* 2. RATING TOTALE (SPOSTATO QUI) con colore dinamico e BORDO PIÙ GROSSO */}
+<div className={`rounded-2xl bg-white border-2 px-4 py-3 shadow-sm ${
+  item.rating_totale < 2 ? "border-green-200" : // Ho messo -200 invece di -100 per renderlo più visibile
+  item.rating_totale <= 3.9 ? "border-yellow-200" : "border-red-200"
 }`}>
   <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
     Rating totale
