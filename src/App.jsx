@@ -24,6 +24,11 @@ export default function App() {
   const [loadingZoneVie, setLoadingZoneVie] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // STATI PER MODIFICA NOTE
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [tempNote, setTempNote] = useState("");
+
   const visibilitaList = ["ALTA", "MEDIA", "BASSA"];
   const trafficoList = ["ALTO", "MEDIO", "BASSO"];
   const lunghezzaList = ["CORTA", "MEDIA", "LUNGA"];
@@ -43,7 +48,6 @@ export default function App() {
       .sort((a, b) => a.localeCompare(b, "it"));
   }, [zoneVie, zona]);
 
-  // Gestione tratti con default "INTERA" per i NULL
   const trattiFiltrati = useMemo(() => {
     if (!zona || !via) return [];
     const list = zoneVie
@@ -52,7 +56,6 @@ export default function App() {
     return [...new Set(list)].sort((a, b) => a.localeCompare(b, "it"));
   }, [zoneVie, zona, via]);
 
-  // Seleziona automaticamente il tratto
   useEffect(() => {
     if (trattiFiltrati.length > 0) {
       if (trattiFiltrati.includes("INTERA")) {
@@ -190,12 +193,31 @@ export default function App() {
       if (error) throw error;
       if (data?.[0]) setItems((prev) => [data[0], ...prev]);
       
-      // Reset form
       setZona(""); setVia(""); setTratto(""); setVisibilita(""); setTraffico(""); setLunghezza(""); setLarghezza(""); setGrade(""); setNote("");
       setFotoFile(null); setFotoPreview("");
       if (document.getElementById("foto-upload")) document.getElementById("foto-upload").value = "";
     } catch (e) { console.error(e); setErrorMessage("Errore nel salvataggio."); }
     finally { setLoading(false); }
+  }
+
+  // --- FUNZIONE PER MODIFICARE SOLO LE NOTE ---
+  async function updateNote() {
+    if (!editingItem) return;
+    try {
+      const { error } = await supabase
+        .from("segnalazioni")
+        .update({ note: tempNote })
+        .eq("id", editingItem.id);
+
+      if (error) throw error;
+
+      // Aggiorno lo stato locale per vedere subito la modifica
+      setItems(items.map(i => i.id === editingItem.id ? { ...i, note: tempNote } : i));
+      setIsModalOpen(false);
+      setEditingItem(null);
+    } catch (e) {
+      alert("Errore nell'aggiornamento della nota.");
+    }
   }
 
   return (
@@ -226,7 +248,6 @@ export default function App() {
               </select>
               {trattiFiltrati.length === 1 && via && <p className="mt-1 text-[10px] text-slate-400 ml-2 italic">Valore unico preimpostato</p>}
             </div>
-            {/* Altri select (Visibilità, Traffico, etc...) */}
             {[
               { label: "Visibilità", state: visibilita, setter: setVisibilita, list: visibilitaList },
               { label: "Traffico", state: traffico, setter: setTraffico, list: trafficoList },
@@ -257,7 +278,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* COLONNA DESTRA: LISTA (CARD DETTAGLIATE) */}
+        {/* COLONNA DESTRA: LISTA */}
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-bold text-slate-900">Ultime segnalazioni</h2>
@@ -267,66 +288,102 @@ export default function App() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {items.map((item) => (
               <article key={item.id} className={`overflow-hidden rounded-3xl border bg-slate-50 ${top3Ids.includes(item.id) ? "border-red-700 ring-4 ring-red-500 shadow-lg shadow-red-300" : "border-slate-200"}`}>
-  {item.image_url ? (
-    <img src={item.image_url} alt={item.via} className="h-48 w-full object-cover" />
-  ) : (
-    <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">Nessuna foto salvata</div>
-  )}
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.via} className="h-48 w-full object-cover" />
+                ) : (
+                  <div className="flex h-48 items-center justify-center bg-slate-200 text-sm text-slate-500">Nessuna foto salvata</div>
+                )}
 
-  <div className="space-y-4 p-4">
-    {/* 1. INFORMAZIONI GENERALI */}
-    <div>
-      <h3 className="text-lg font-semibold text-slate-900 uppercase">{item.via}</h3>
-      <p className="text-sm font-medium text-slate-700">{item.tratto}</p>
-      <p className="mt-1 text-sm text-slate-600">{item.zona}</p>
-      <p className="mt-1 text-xs text-slate-400 italic">Creato il {new Date(item.created_at).toLocaleString("it-IT")}</p>
-    </div>
+                <div className="space-y-4 p-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 uppercase">{item.via}</h3>
+                    <p className="text-sm font-medium text-slate-700">{item.tratto}</p>
+                    <p className="mt-1 text-sm text-slate-600">{item.zona}</p>
+                    <p className="mt-1 text-xs text-slate-400 italic">Creato il {new Date(item.created_at).toLocaleString("it-IT")}</p>
+                  </div>
 
-{/* 2. RATING TOTALE (SPOSTATO QUI) con colore dinamico e BORDO PIÙ GROSSO */}
-<div className={`rounded-2xl bg-white border-2 px-4 py-3 shadow-sm ${
-  item.rating_totale < 2 ? "border-green-200" : // Ho messo -200 invece di -100 per renderlo più visibile
-  item.rating_totale <= 3.9 ? "border-yellow-200" : "border-red-200"
-}`}>
-  <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-    Rating totale
-  </div>
-  <div className={`text-3xl font-black ${
-    item.rating_totale < 2 ? "text-green-600" : 
-    item.rating_totale <= 3.9 ? "text-yellow-500" : "text-red-600"
-  }`}>
-    {item.rating_totale ?? "-"}
-  </div>
-</div>
+                  <div className={`rounded-2xl bg-white border-2 px-4 py-3 shadow-sm ${
+                    item.rating_totale < 2 ? "border-green-200" : 
+                    item.rating_totale <= 3.9 ? "border-yellow-200" : "border-red-200"
+                  }`}>
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Rating totale</div>
+                    <div className={`text-3xl font-black ${
+                      item.rating_totale < 2 ? "text-green-600" : 
+                      item.rating_totale <= 3.9 ? "text-yellow-500" : "text-red-600"
+                    }`}>
+                      {item.rating_totale ?? "-"}
+                    </div>
+                  </div>
 
-    {/* 3. BADGE E GRADE */}
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Grade Badge (Ora più grande come chiesto prima) */}
-      <span className={`rounded-full px-4 py-2 text-sm font-black uppercase tracking-wider shadow-sm ${getGradeStyle(item.grade)}`}>
-        {item.grade}
-      </span>
-      
-      {/* Altri mini-badge */}
-      <div className="flex flex-wrap gap-1 text-[10px] text-slate-500">
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Visibilità: {item.visibilita}</span>
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Traffico: {item.traffico}</span>
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Lunghezza: {item.lunghezza}</span>
-        <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Larghezza: {item.larghezza}</span>
-      </div>
-    </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-4 py-2 text-sm font-black uppercase tracking-wider shadow-sm ${getGradeStyle(item.grade)}`}>
+                      {item.grade}
+                    </span>
+                    <div className="flex flex-wrap gap-1 text-[10px] text-slate-500">
+                      <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Visibilità: {item.visibilita}</span>
+                      <span className="rounded-md bg-white px-2 py-1 ring-1 ring-slate-200">Traffico: {item.traffico}</span>
+                    </div>
+                  </div>
 
-    {/* 4. NOTE */}
-    <div className="rounded-2xl bg-slate-100 px-4 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Note</div>
-      <div className="mt-1 text-sm text-slate-700 italic leading-snug">
-        {item.note?.trim() ? item.note : "Nessuna nota aggiuntiva."}
-      </div>
-    </div>
-  </div>
-</article>
+                  {/* SEZIONE NOTE CON PENNINA MODIFICA */}
+                  <div className="rounded-2xl bg-slate-100 px-4 py-3 relative group">
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="text-[10px] uppercase tracking-wide text-slate-500 font-bold">Note</div>
+                      <button 
+                        onClick={() => {
+                          setEditingItem(item);
+                          setTempNote(item.note || "");
+                          setIsModalOpen(true);
+                        }}
+                        className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-900 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="text-sm text-slate-700 italic leading-snug break-words">
+                      {item.note?.trim() ? item.note : "Nessuna nota aggiuntiva."}
+                    </div>
+                  </div>
+                </div>
+              </article>
             ))}
           </div>
         </section>
       </div>
+
+      {/* MODAL PER MODIFICA NOTE */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Modifica Note</h2>
+            <p className="text-sm text-slate-500 mb-4 uppercase font-bold">{editingItem?.via}</p>
+            
+            <textarea
+              value={tempNote}
+              onChange={(e) => setTempNote(e.target.value)}
+              className="w-full h-32 rounded-2xl border border-slate-200 p-4 text-sm focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition-all"
+              placeholder="Scrivi qui le nuove note..."
+            />
+            
+            <div className="flex gap-3 mt-6">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 px-4 py-3 rounded-2xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200 transition-colors"
+              >
+                Annulla
+              </button>
+              <button 
+                onClick={updateNote}
+                className="flex-1 px-4 py-3 rounded-2xl bg-slate-900 text-white font-semibold hover:opacity-90 transition-opacity"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
